@@ -1,0 +1,77 @@
+version: '3.3'
+
+services:
+  mariadb:
+    image: mariadb:11.2
+    environment: 
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes: 
+      - mariadb_data:/var/lib/mysql
+    networks: 
+      - backend-network
+    restart: always
+  
+  phpmyadmin:
+    image: phpmyadmin:5
+    restart: always
+    ports:
+      - 8080:80
+    environment:
+      - PMA_HOST=maria_db
+    depends_on:
+      - mariadb
+    networks:
+      - frontend-network
+      - backend-network
+
+  prestashop:
+    image: bitnami/prestashop:8.0.1
+    environment: 
+      - PRESTASHOP_FIRST_NAME=${PRESTASHOP_FIRST_NAME}
+      - PRESTASHOP_LAST_NAME=${PRESTASHOP_LAST_NAME}
+      - PRESTASHOP_PASSWORD=${PRESTASHOP_PASSWORD}
+      - PRESTASHOP_EMAIL=${PRESTASHOP_EMAIL}
+      - PRESTASHOP_COUNTRY=${PRESTASHOP_COUNTRY}
+      - PRESTASHOP_LANGUAGE=${PRESTASHOP_LANGUAGE}
+      - PRESTASHOP_DATABASE_HOST=mariadb
+      - PRESTASHOP_HOST=${PRESTASHOP_HOST}
+      - PRESTASHOP_ENABLE_HTTPS=${PRESTASHOP_ENABLE_HTTPS}
+      - PRESTASHOP_DATABASE_NAME=${MYSQL_DATABASE}
+      - PRESTASHOP_DATABASE_USER=${MYSQL_USER}
+      - PRESTASHOP_DATABASE_PASSWORD=${MYSQL_PASSWORD} 
+    restart: always
+    volumes:
+      - prestashop_data:/bitnami/prestashop
+    depends_on:
+      - mariadb
+    networks:
+      - frontend-network
+      - backend-network
+
+  https-portal:
+    image: steveltn/https-portal:1
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      DOMAINS: 'localhost -> http://prestashop:80 #local'
+      #DOMAINS: '${PRESTASHOP_HOST} -> http://prestashop:8080 #production'
+    volumes:
+      - ssl_certs_data:/var/lib/https-portal
+    depends_on:
+      - prestashop
+    restart: always
+    networks:
+      - frontend-network
+
+volumes:
+  mariadb_data:
+  prestashop_data:
+  ssl_certs_data:
+
+networks: 
+  backend-network:
+  frontend-network:
